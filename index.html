@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Test Chip-8 Page</title>
+    <script src="index.js"></script>
+</head>
+
+<body>
+    <div>
+        Select a text file:
+        <input type="file" id="fileInput">
+        <button id="step">step</button>
+    </div>
+    <pre id="fileDisplayArea"><pre>
+    <canvas id="mainboard" ref="canvas"></canvas>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>I</td>
+            <td id="regI"></td>
+        </tr>
+        <tr>
+            <td>delay</td>
+            <td id="delay"></td>
+        </tr>
+        <tr>
+            <td>sound</td>
+            <td id="sound"></td>
+        </tr>
+    </table>
+    <table>
+        <tr>
+            <th>PC</th>
+            <th>word</th>
+            <th>next word</th>
+        </tr>
+        <tr>
+            <td id="pc"></td>
+            <td id="word"></td>
+            <td id="nextWord"></td>
+        </tr>
+    </table>
+    <table id="stackTable">
+    </table>
+    <table id="registerTable">
+    </table>
+</body>
+
+</html>
