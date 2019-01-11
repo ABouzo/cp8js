@@ -274,6 +274,8 @@ export default class Cpu {
                 const numberOfBytes: number = this.getN(word);
                 const startingX = this.r.v[this.getX(word)];
                 const startingY = this.r.v[this.getY(word)];
+                // tslint:disable-next-line:no-console
+                console.log(startingX.toString(16), startingY.toString(16));
                 const startingMemoryLocation = this.r.i;
 
                 for (let y = 0; y < numberOfBytes; y++) {
@@ -287,6 +289,8 @@ export default class Cpu {
                         // this.r.v[0xF] = (this.setPixel(xPos, yPos, !!bit)) ? 0x1 : 0x0;
                         if (((byte & (0x80 >> x)) !== 0)) {
                             const collision = (this.setPixel(startingX + x, startingY + y));
+                            // tslint:disable-next-line:no-console
+                            console.log(`Collision: ${collision}`);
                             if (collision) {
                                 this.r.v[0xF] = 1;
                             }
@@ -439,7 +443,10 @@ export default class Cpu {
         }
 
         const location = x + (width * y);
+        const old = this.graphicMemory[location];
         this.graphicMemory[location] = this.graphicMemory[location] ? !true : true;
+        // tslint:disable-next-line:no-console
+        console.log(`at (${x},${y}) is ${old} needs to be ${true} now is ${this.graphicMemory[location]}`);
         return !this.graphicMemory[location];
     }
 }

@@ -60,13 +60,27 @@ describe("Chip 8 cpu", () => {
 
     it("Should have V[0xF] set to 1 on collision", () => {
         cpu.loadRom([
-            0xA2, 0x03, // Location of sprite
-            0xd0, 0x01, // One byte drawn at 0,0
-            0xd0, 0x01, // ditto ^
-            0xff, 0xff, // a black line
+            0xA2, 0x0A, // Location of sprite
+            0x61, 0x00,
+            0xd1, 0x11, // One byte drawn at 0,0
+            0xA2, 0x0B,
+            0xd1, 0x11, // ditto ^
+            0xff, 0x40, // a black line
         ]);
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) {
+            // tslint:disable-next-line:no-console
+            console.log(`-------------------------------------
+
+            `);
             cpu.step();
+
+            // tslint:disable-next-line:no-console
+            console.log(`0x${debugTool.pc.toString(16)}
+${debugTool.word.toString(16)} 0x${debugTool.nextWord.toString(16)}`);
+            // tslint:disable-next-line:no-console
+            console.log(`I=0x${debugTool.I.toString(16)}`);
+            // tslint:disable-next-line:no-console
+            console.log(`V0xF=0x${debugTool.vx[0xf]}`);
         }
         expect(debugTool.vx[0xF]).to.equal(1);
     });

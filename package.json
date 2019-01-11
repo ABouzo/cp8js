@@ -7,7 +7,7 @@
         "build": "rollup -c",
         "server": "http-server ./",
         "test": "mocha -r ts-node/register test/**/*.spec.ts",
-        "testWithCoverage": "nyc -r lcov -e .ts -x \"*.spec.ts\" mocha -r ts-node/register test/**/*.spec.ts && nyc report"
+        "testWithCoverage": "nyc -e .ts mocha -r ts-node/register test/**/*.spec.ts"
     },
     "author": "",
     "license": "ISC",
@@ -25,5 +25,14 @@
         "tslint": "^5.11.0",
         "typescript": "^3.2.1"
     },
-    "dependencies": {}
+    "dependencies": {},
+    "nyc": {
+        "exclude": [
+          "**/*.spec.ts"
+        ],
+        "reporter": [
+          "lcov",
+          "text"
+        ]
+      }
 }
