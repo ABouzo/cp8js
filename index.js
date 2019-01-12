@@ -631,32 +631,42 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
     window.onload = function () {
         var controller = new Controller();
         var cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
-        var fileInput = document.getElementById("fileInput");
         var stepButton = document.getElementById("step");
         var stopButton = document.getElementById("stop");
         var startButton = document.getElementById("start");
         var resetButton = document.getElementById("reset");
+        var select = document.getElementById("program");
+        var programLoaded = document.getElementById("loaded-program");
         document.addEventListener("keydown", function (event) {
             controller.onKeyDown(event);
             // alert("key" + event.key);
         });
         document.addEventListener("keyup", function (event) { return controller.onKeyUp(event); });
-        if (fileInput != null) {
-            fileInput.addEventListener("change", function (e) {
-                var fileList = fileInput.files;
-                if (fileList != null) {
-                    var file = fileList[0];
-                    var reader_1 = new FileReader();
-                    reader_1.onload = function () {
-                        if (reader_1.result != null) {
-                            var romByteArray = new Uint8Array(reader_1.result);
-                            cpu.loadRom(Array.from(romByteArray));
-                        }
-                    };
-                    reader_1.readAsArrayBuffer(file);
-                }
-            });
-        }
+        var programs = ["15PUZZLE", "BLINKY", "BLITZ", "BRIX", "CONNECT4", "GUESS", "HIDDEN",
+            "IBM", "INVADERS", "KALEID", "MAZE", "MERLIN", "MISSILE", "PONG", "PONG2", "PUZZLE", "SYZYGY",
+            "TANK", "TETRIS", "TICTAC", "UFO", "VBRIX", "VERS", "WIPEOFF"];
+        programs.forEach(function (program) {
+            var option = document.createElement("option");
+            option.textContent = program;
+            select.add(option);
+        });
+        select.addEventListener("change", function (event) {
+            var value = select.value;
+            var xhr = new XMLHttpRequest();
+            if (!value) {
+                alert("Please select a ROM.");
+                return;
+            }
+            // Load program.
+            xhr.open("GET", "roms/" + value, true);
+            xhr.responseType = "arraybuffer";
+            xhr.onload = function () {
+                cpu.loadRom(Array.from(new Uint8Array(xhr.response)));
+                programLoaded.textContent = value;
+            };
+            xhr.send();
+            this.blur();
+        });
         if (stepButton) {
             stepButton.addEventListener("click", function () {
                 if (cpu) {

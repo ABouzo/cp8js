@@ -49,11 +49,12 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
     window.onload = () => {
         const controller: Controller = new Controller();
         const cpu: Cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
-        const fileInput: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
         const stepButton: HTMLButtonElement = document.getElementById("step") as HTMLButtonElement;
         const stopButton: HTMLButtonElement = document.getElementById("stop") as HTMLButtonElement;
         const startButton: HTMLButtonElement = document.getElementById("start") as HTMLButtonElement;
         const resetButton: HTMLButtonElement = document.getElementById("reset") as HTMLButtonElement;
+        const select: HTMLSelectElement = document.getElementById("program") as HTMLSelectElement;
+        const programLoaded: HTMLDataElement = document.getElementById("loaded-program") as HTMLDataElement;
 
         document.addEventListener("keydown", (event) => {
             controller.onKeyDown(event);
@@ -61,25 +62,34 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
         });
         document.addEventListener("keyup", (event) => controller.onKeyUp(event));
 
-        if (fileInput != null) {
-            fileInput.addEventListener("change", (e) => {
-                const fileList: FileList | null = fileInput.files;
-                if (fileList != null) {
-                    const file: File = fileList[0];
+        const programs = ["15PUZZLE", "BLINKY", "BLITZ", "BRIX", "CONNECT4", "GUESS", "HIDDEN",
+            "IBM", "INVADERS", "KALEID", "MAZE", "MERLIN", "MISSILE", "PONG", "PONG2", "PUZZLE", "SYZYGY",
+            "TANK", "TETRIS", "TICTAC", "UFO", "VBRIX", "VERS", "WIPEOFF"];
+        programs.forEach((program) => {
+            const option = document.createElement("option");
+            option.textContent = program;
+            select.add(option);
+        });
+        select.addEventListener("change", function (event) {
+            const value = select.value;
+            const xhr = new XMLHttpRequest();
 
-                    const reader = new FileReader();
+            if (!value) {
+                alert("Please select a ROM.");
+                return;
+            }
+            // Load program.
+            xhr.open("GET", "roms/" + value, true);
+            xhr.responseType = "arraybuffer";
+            xhr.onload = () => {
+                cpu.loadRom(Array.from(new Uint8Array(xhr.response)));
+                programLoaded.textContent = value;
+            };
+            xhr.send();
 
-                    reader.onload = () => {
-                        if (reader.result != null) {
-                            const romByteArray = new Uint8Array(reader.result as ArrayBuffer);
-                            cpu.loadRom(Array.from(romByteArray));
-                        }
-                    };
+            this.blur();
+        });
 
-                    reader.readAsArrayBuffer(file);
-                }
-            });
-        }
         if (stepButton) {
             stepButton.addEventListener("click", () => {
                 if (cpu) {
