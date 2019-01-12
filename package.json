@@ -28,11 +28,11 @@
     "dependencies": {},
     "nyc": {
         "exclude": [
-          "**/*.spec.ts"
+            "**/*.spec.ts"
         ],
         "reporter": [
-          "lcov",
-          "text"
+            "lcov",
+            "text"
         ]
-      }
+    }
 }

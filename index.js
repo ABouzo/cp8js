@@ -6,6 +6,8 @@ var Cpu = /** @class */ (function () {
         this.display = display;
         this.debugToolImpl = debugToolImpl;
         this.controller = controller;
+        this.delayInterval = Cpu.cpuHz / Cpu.delayHz;
+        this.stepCount = 0;
         this.stack = new Array(16);
         this.r = {
             delay: 0,
@@ -60,33 +62,40 @@ var Cpu = /** @class */ (function () {
     };
     Cpu.prototype.start = function () {
         var _this = this;
-        var timer = function () {
-            if (_this.r.delay > 0) {
-                --_this.r.delay;
-            }
-            if (_this.r.sound > 0) {
-                --_this.r.sound;
-            }
-            _this.timeoutTimer = setTimeout(function () { return timer(); }, 1000 / 60);
-        };
-        var loop = function () {
-            _this.step();
-            _this.timeoutLoop = setTimeout(function () { return loop(); }, 1000 / 300);
-        };
-        timer();
-        loop();
+        if (!this.timeoutLoop) {
+            var loop_1 = function () {
+                _this.step();
+                _this.timeoutLoop = setTimeout(function () { return loop_1(); }, 1000 / Cpu.cpuHz);
+            };
+            loop_1();
+        }
     };
-    Cpu.prototype.reset = function () {
+    Cpu.prototype.stop = function () {
         if (this.timeoutLoop) {
             clearTimeout(this.timeoutLoop);
+            this.timeoutLoop = undefined;
         }
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
-        }
+    };
+    Cpu.prototype.reset = function () {
+        this.stop();
         this.resetStates();
         this.start();
     };
     Cpu.prototype.step = function () {
+        if (this.r.v[0xF] && this.r.v[0xF] !== 0 && this.r.v[0xF] !== 1) {
+            // tslint:disable-next-line:no-console
+            console.log("error");
+        }
+        this.stepCount++;
+        if (this.stepCount === this.delayInterval) {
+            if (this.r.delay > 0) {
+                --this.r.delay;
+            }
+            if (this.r.sound > 0) {
+                --this.r.sound;
+            }
+            this.stepCount = 0;
+        }
         var word = this.getInstruction();
         this.ops[this.getOp(word)](word);
         if (this.debugToolImpl) {
@@ -199,7 +208,7 @@ var Cpu = /** @class */ (function () {
                         _this.r.v[valueOfX] = valueInRegisterX & valueInRegisterY;
                         break;
                     case 0x3:
-                        _this.r.v[valueInRegisterX] = valueInRegisterX ^ valueInRegisterY;
+                        _this.r.v[valueOfX] = valueInRegisterX ^ valueInRegisterY;
                         break;
                     case 0x4:
                         var result = valueInRegisterX + valueInRegisterY;
@@ -267,6 +276,8 @@ var Cpu = /** @class */ (function () {
                 var numberOfBytes = _this.getN(word);
                 var startingX = _this.r.v[_this.getX(word)];
                 var startingY = _this.r.v[_this.getY(word)];
+                // tslint:disable-next-line:no-console
+                console.log(startingX.toString(16), startingY.toString(16));
                 var startingMemoryLocation = _this.r.i;
                 for (var y = 0; y < numberOfBytes; y++) {
                     var byte = _this.ram[startingMemoryLocation + y];
@@ -279,6 +290,8 @@ var Cpu = /** @class */ (function () {
                         // this.r.v[0xF] = (this.setPixel(xPos, yPos, !!bit)) ? 0x1 : 0x0;
                         if (((byte & (0x80 >> x)) !== 0)) {
                             var collision = (_this.setPixel(startingX + x, startingY + y));
+                            // tslint:disable-next-line:no-console
+                            console.log("Collision: " + collision);
                             if (collision) {
                                 _this.r.v[0xF] = 1;
                             }
@@ -426,9 +439,14 @@ var Cpu = /** @class */ (function () {
             y += height;
         }
         var location = x + (width * y);
+        var old = this.graphicMemory[location];
         this.graphicMemory[location] = this.graphicMemory[location] ? !true : true;
+        // tslint:disable-next-line:no-console
+        console.log("at (" + x + "," + y + ") is " + old + " needs to be " + true + " now is " + this.graphicMemory[location]);
         return !this.graphicMemory[location];
     };
+    Cpu.cpuHz = 300;
+    Cpu.delayHz = 60;
     return Cpu;
 }());
 
@@ -615,6 +633,9 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
         var cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
         var fileInput = document.getElementById("fileInput");
         var stepButton = document.getElementById("step");
+        var stopButton = document.getElementById("stop");
+        var startButton = document.getElementById("start");
+        var resetButton = document.getElementById("reset");
         document.addEventListener("keydown", function (event) {
             controller.onKeyDown(event);
             // alert("key" + event.key);
@@ -630,7 +651,6 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
                         if (reader_1.result != null) {
                             var romByteArray = new Uint8Array(reader_1.result);
                             cpu.loadRom(Array.from(romByteArray));
-                            cpu.start();
                         }
                     };
                     reader_1.readAsArrayBuffer(file);
@@ -641,6 +661,27 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
             stepButton.addEventListener("click", function () {
                 if (cpu) {
                     cpu.step();
+                }
+            });
+        }
+        if (stopButton) {
+            stopButton.addEventListener("click", function () {
+                if (cpu) {
+                    cpu.stop();
+                }
+            });
+        }
+        if (startButton) {
+            startButton.addEventListener("click", function () {
+                if (cpu) {
+                    cpu.start();
+                }
+            });
+        }
+        if (resetButton) {
+            resetButton.addEventListener("click", function () {
+                if (cpu) {
+                    cpu.reset();
                 }
             });
         }
