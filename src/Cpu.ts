@@ -1,5 +1,9 @@
 // tslint:disable:no-bitwise
 export default class Cpu {
+    private static cpuHz = 300;
+    private static delayHz = 60;
+    private delayInterval = Cpu.cpuHz / Cpu.delayHz;
+    private stepCount = 0;
     private ram: number[];
     private graphicMemory: boolean[];
     private timeoutLoop?: NodeJS.Timeout;
@@ -57,35 +61,44 @@ export default class Cpu {
     }
 
     public start() {
-        const timer = () => {
+        if (!this.timeoutLoop) {
+            const loop = () => {
+                this.step();
+                this.timeoutLoop = setTimeout(() => loop(), 1000 / Cpu.cpuHz);
+            };
+            loop();
+        }
+    }
+
+    public stop() {
+        if (this.timeoutLoop) {
+            clearTimeout(this.timeoutLoop);
+            this.timeoutLoop = undefined;
+        }
+    }
+
+    public reset() {
+        this.stop();
+        this.resetStates();
+        this.start();
+    }
+
+    public step() {
+        if (this.r.v[0xF] && this.r.v[0xF] !== 0 && this.r.v[0xF] !== 1) {
+            // tslint:disable-next-line:no-console
+            console.log("error");
+        }
+        this.stepCount++;
+        if (this.stepCount === this.delayInterval) {
             if (this.r.delay > 0) {
                 --this.r.delay;
             }
             if (this.r.sound > 0) {
                 --this.r.sound;
             }
-            this.timeoutTimer = setTimeout(() => timer(), 1000 / 60);
-        };
-        const loop = () => {
-            this.step();
-            this.timeoutLoop = setTimeout(() => loop(), 1000 / 300);
-        };
-        timer();
-        loop();
-    }
-
-    public reset() {
-        if (this.timeoutLoop) {
-            clearTimeout(this.timeoutLoop);
+            this.stepCount = 0;
         }
-        if (this.timeoutTimer) {
-            clearTimeout(this.timeoutTimer);
-        }
-        this.resetStates();
-        this.start();
-    }
 
-    public step() {
         const word = this.getInstruction();
         this.ops[this.getOp(word)](word);
         if (this.debugToolImpl) {
@@ -206,7 +219,7 @@ export default class Cpu {
                         this.r.v[valueOfX] = valueInRegisterX & valueInRegisterY;
                         break;
                     case 0x3:
-                        this.r.v[valueInRegisterX] = valueInRegisterX ^ valueInRegisterY;
+                        this.r.v[valueOfX] = valueInRegisterX ^ valueInRegisterY;
                         break;
                     case 0x4:
                         const result = valueInRegisterX + valueInRegisterY;
@@ -274,6 +287,8 @@ export default class Cpu {
                 const numberOfBytes: number = this.getN(word);
                 const startingX = this.r.v[this.getX(word)];
                 const startingY = this.r.v[this.getY(word)];
+                // tslint:disable-next-line:no-console
+                console.log(startingX.toString(16), startingY.toString(16));
                 const startingMemoryLocation = this.r.i;
 
                 for (let y = 0; y < numberOfBytes; y++) {
@@ -287,6 +302,8 @@ export default class Cpu {
                         // this.r.v[0xF] = (this.setPixel(xPos, yPos, !!bit)) ? 0x1 : 0x0;
                         if (((byte & (0x80 >> x)) !== 0)) {
                             const collision = (this.setPixel(startingX + x, startingY + y));
+                            // tslint:disable-next-line:no-console
+                            console.log(`Collision: ${collision}`);
                             if (collision) {
                                 this.r.v[0xF] = 1;
                             }
@@ -439,7 +456,10 @@ export default class Cpu {
         }
 
         const location = x + (width * y);
+        const old = this.graphicMemory[location];
         this.graphicMemory[location] = this.graphicMemory[location] ? !true : true;
+        // tslint:disable-next-line:no-console
+        console.log(`at (${x},${y}) is ${old} needs to be ${true} now is ${this.graphicMemory[location]}`);
         return !this.graphicMemory[location];
     }
 }

@@ -51,6 +51,9 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
         const cpu: Cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
         const fileInput: HTMLInputElement = document.getElementById("fileInput") as HTMLInputElement;
         const stepButton: HTMLButtonElement = document.getElementById("step") as HTMLButtonElement;
+        const stopButton: HTMLButtonElement = document.getElementById("stop") as HTMLButtonElement;
+        const startButton: HTMLButtonElement = document.getElementById("start") as HTMLButtonElement;
+        const resetButton: HTMLButtonElement = document.getElementById("reset") as HTMLButtonElement;
 
         document.addEventListener("keydown", (event) => {
             controller.onKeyDown(event);
@@ -70,7 +73,6 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
                         if (reader.result != null) {
                             const romByteArray = new Uint8Array(reader.result as ArrayBuffer);
                             cpu.loadRom(Array.from(romByteArray));
-                            cpu.start();
                         }
                     };
 
@@ -82,6 +84,27 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
             stepButton.addEventListener("click", () => {
                 if (cpu) {
                     cpu.step();
+                }
+            });
+        }
+        if (stopButton) {
+            stopButton.addEventListener("click", () => {
+                if (cpu) {
+                    cpu.stop();
+                }
+            });
+        }
+        if (startButton) {
+            startButton.addEventListener("click", () => {
+                if (cpu) {
+                    cpu.start();
+                }
+            });
+        }
+        if (resetButton) {
+            resetButton.addEventListener("click", () => {
+                if (cpu) {
+                    cpu.reset();
                 }
             });
         }
