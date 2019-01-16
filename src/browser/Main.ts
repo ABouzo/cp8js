@@ -48,7 +48,7 @@ const myWindow: any = window;
 if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) {
     window.onload = () => {
         const controller: Controller = new Controller();
-        const cpu: Cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
+        const cpu: Cpu = new Cpu(new Display({ x: 64, y: 32 }), /* new DebuggerTool()*/undefined, controller);
         const stepButton: HTMLButtonElement = document.getElementById("step") as HTMLButtonElement;
         const stopButton: HTMLButtonElement = document.getElementById("stop") as HTMLButtonElement;
         const startButton: HTMLButtonElement = document.getElementById("start") as HTMLButtonElement;
@@ -70,7 +70,7 @@ if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) 
             option.textContent = program;
             select.add(option);
         });
-        select.addEventListener("change", function (event) {
+        select.addEventListener("change", function(event) {
             const value = select.value;
             const xhr = new XMLHttpRequest();
 

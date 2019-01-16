@@ -6,8 +6,7 @@ var Cpu = /** @class */ (function () {
         this.display = display;
         this.debugToolImpl = debugToolImpl;
         this.controller = controller;
-        this.delayInterval = Cpu.cpuHz / Cpu.delayHz;
-        this.stepCount = 0;
+        this.running = false;
         this.stack = new Array(16);
         this.r = {
             delay: 0,
@@ -42,6 +41,7 @@ var Cpu = /** @class */ (function () {
         this.getKK = function (word) { return (word & 0x00FF); };
         this.getNNN = function (word) { return (word & 0x0FFF); };
         this.getMostSignificantBit = function (byte) { return (byte & 0x80 >> 7); };
+        this.lastDelayTime = Date.now();
         this.ops = this.initOps();
         this.graphicMemory = new Array(64 * 32);
         this.ram = this.buildMemory();
@@ -62,19 +62,21 @@ var Cpu = /** @class */ (function () {
     };
     Cpu.prototype.start = function () {
         var _this = this;
-        if (!this.timeoutLoop) {
+        if (!this.running) {
             var loop_1 = function () {
-                _this.step();
-                _this.timeoutLoop = setTimeout(function () { return loop_1(); }, 1000 / Cpu.cpuHz);
+                for (var i = 0; i < 8; i++) {
+                    _this.step();
+                }
+                if (_this.running) {
+                    requestAnimationFrame(function () { return loop_1(); });
+                }
             };
+            this.running = true;
             loop_1();
         }
     };
     Cpu.prototype.stop = function () {
-        if (this.timeoutLoop) {
-            clearTimeout(this.timeoutLoop);
-            this.timeoutLoop = undefined;
-        }
+        this.running = false;
     };
     Cpu.prototype.reset = function () {
         this.stop();
@@ -82,19 +84,16 @@ var Cpu = /** @class */ (function () {
         this.start();
     };
     Cpu.prototype.step = function () {
-        if (this.r.v[0xF] && this.r.v[0xF] !== 0 && this.r.v[0xF] !== 1) {
-            // tslint:disable-next-line:no-console
-            console.log("error");
-        }
-        this.stepCount++;
-        if (this.stepCount === this.delayInterval) {
+        var now = Date.now();
+        var timeSinceLastDelay = now - this.lastDelayTime;
+        if (timeSinceLastDelay > Cpu.fpsInterval) {
+            this.lastDelayTime = now - (timeSinceLastDelay % Cpu.fpsInterval);
             if (this.r.delay > 0) {
                 --this.r.delay;
             }
             if (this.r.sound > 0) {
                 --this.r.sound;
             }
-            this.stepCount = 0;
         }
         var word = this.getInstruction();
         this.ops[this.getOp(word)](word);
@@ -276,8 +275,6 @@ var Cpu = /** @class */ (function () {
                 var numberOfBytes = _this.getN(word);
                 var startingX = _this.r.v[_this.getX(word)];
                 var startingY = _this.r.v[_this.getY(word)];
-                // tslint:disable-next-line:no-console
-                console.log(startingX.toString(16), startingY.toString(16));
                 var startingMemoryLocation = _this.r.i;
                 for (var y = 0; y < numberOfBytes; y++) {
                     var byte = _this.ram[startingMemoryLocation + y];
@@ -291,7 +288,6 @@ var Cpu = /** @class */ (function () {
                         if (((byte & (0x80 >> x)) !== 0)) {
                             var collision = (_this.setPixel(startingX + x, startingY + y));
                             // tslint:disable-next-line:no-console
-                            console.log("Collision: " + collision);
                             if (collision) {
                                 _this.r.v[0xF] = 1;
                             }
@@ -400,6 +396,7 @@ var Cpu = /** @class */ (function () {
         return ops;
     };
     Cpu.prototype.resetStates = function () {
+        this.lastDelayTime = Date.now();
         this.graphicMemory = new Array(64 * 32);
         this.r.pc = 0x200;
         this.r.v = new Array(16);
@@ -441,12 +438,9 @@ var Cpu = /** @class */ (function () {
         var location = x + (width * y);
         var old = this.graphicMemory[location];
         this.graphicMemory[location] = this.graphicMemory[location] ? !true : true;
-        // tslint:disable-next-line:no-console
-        console.log("at (" + x + "," + y + ") is " + old + " needs to be " + true + " now is " + this.graphicMemory[location]);
         return !this.graphicMemory[location];
     };
-    Cpu.cpuHz = 300;
-    Cpu.delayHz = 60;
+    Cpu.fpsInterval = 1000 / 603;
     return Cpu;
 }());
 
@@ -542,18 +536,10 @@ var Controller = /** @class */ (function () {
         if (this.inputButtons.hasOwnProperty(event.key)) {
             this.inputButtons[event.key].pressed = true;
         }
-        else {
-            // tslint:disable-next-line:no-console
-            console.log("not found " + event.key);
-        }
     };
     Controller.prototype.onKeyUp = function (event) {
         if (this.inputButtons.hasOwnProperty(event.key)) {
             this.inputButtons[event.key].pressed = false;
-        }
-        else {
-            // tslint:disable-next-line:no-console
-            console.log("not found " + event.key);
         }
     };
     return Controller;
@@ -587,50 +573,11 @@ var Display = /** @class */ (function () {
     return Display;
 }());
 
-// tslint:disable:no-console
-var DebuggerTool = /** @class */ (function () {
-    function DebuggerTool() {
-    }
-    DebuggerTool.prototype.onRamChange = function (ram) {
-        // todo
-    };
-    DebuggerTool.prototype.onGeneralRegisterChange = function (registers) {
-        var registerTable = document.getElementById("registerTable");
-        var htmlString = "<tr><th>Vx</th><th></th></tr>";
-        for (var index in registers) {
-            if (registers.hasOwnProperty(index)) {
-                var element = registers[index];
-                htmlString += "<tr><td>" + index + "</td><td>0x" + element.toString(16) + " (" + element + ")</td></tr>";
-            }
-        }
-        registerTable.innerHTML = htmlString;
-    };
-    DebuggerTool.prototype.onSpecialRegisterChange = function (i, delay, sound) {
-        document.getElementById("regI").innerHTML = "0x" + i.toString(16) + " (" + i + ")";
-        document.getElementById("delay").innerHTML = "0x" + delay.toString(16) + " (" + delay + ")";
-        document.getElementById("sound").innerHTML = "0x" + sound.toString(16) + " (" + sound + ")";
-    };
-    DebuggerTool.prototype.onStackChange = function (stack, stackPointer) {
-        var stackTable = document.getElementById("stackTable");
-        stackTable.innerHTML = "<tr><th>Stack Pointer</th><th>Stack</th></tr>"; // header
-        stackTable.innerHTML += "<tr><td>" + stackPointer + "</td></tr>";
-        for (var i = stackPointer - 1; i >= 0; i--) {
-            stackTable.innerHTML += "<tr><td></td><td>0x" + stack[i].toString(16) + " (" + stack[i] + ")</td></tr>";
-        }
-    };
-    DebuggerTool.prototype.onStep = function (programCounter, word, nextWord) {
-        document.getElementById("pc")
-            .innerHTML = "0x" + programCounter.toString(16) + " (" + programCounter + ")";
-        document.getElementById("word").innerHTML = "0x" + word.toString(16) + " (" + word + ")";
-        document.getElementById("nextWord").innerHTML = "0x" + nextWord.toString(16) + " (" + nextWord + ")";
-    };
-    return DebuggerTool;
-}());
 var myWindow = window;
 if (myWindow.File && myWindow.FileReader && myWindow.FileList && myWindow.Blob) {
     window.onload = function () {
         var controller = new Controller();
-        var cpu = new Cpu(new Display({ x: 64, y: 32 }), new DebuggerTool(), controller);
+        var cpu = new Cpu(new Display({ x: 64, y: 32 }), /* new DebuggerTool()*/ undefined, controller);
         var stepButton = document.getElementById("step");
         var stopButton = document.getElementById("stop");
         var startButton = document.getElementById("start");

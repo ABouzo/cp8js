@@ -100,18 +100,12 @@ export default class Controller implements IController {
     public onKeyDown(event: KeyboardEvent) {
         if (this.inputButtons.hasOwnProperty(event.key)) {
             this.inputButtons[event.key].pressed = true;
-        } else {
-            // tslint:disable-next-line:no-console
-            console.log("not found " + event.key);
         }
     }
 
     public onKeyUp(event: KeyboardEvent) {
         if (this.inputButtons.hasOwnProperty(event.key)) {
             this.inputButtons[event.key].pressed = false;
-        } else {
-            // tslint:disable-next-line:no-console
-            console.log("not found " + event.key);
         }
     }
 }

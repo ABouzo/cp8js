@@ -1,13 +1,10 @@
 // tslint:disable:no-bitwise
 export default class Cpu {
-    private static cpuHz = 300;
-    private static delayHz = 60;
-    private delayInterval = Cpu.cpuHz / Cpu.delayHz;
-    private stepCount = 0;
+    private static fpsInterval: number = 1000 / 603;
+    private lastDelayTime: number;
     private ram: number[];
     private graphicMemory: boolean[];
-    private timeoutLoop?: NodeJS.Timeout;
-    private timeoutTimer?: NodeJS.Timeout;
+    private running: boolean = false;
     private readonly stack: number[] = new Array(16);
     private readonly r = {
         delay: 0,
@@ -40,6 +37,7 @@ export default class Cpu {
 
     constructor(private readonly display?: IDisplay, private readonly debugToolImpl?: IDebugTool,
                 private readonly controller?: IController) {
+        this.lastDelayTime = Date.now();
         this.ops = this.initOps();
         this.graphicMemory = new Array<boolean>(64 * 32);
         this.ram = this.buildMemory();
@@ -61,20 +59,22 @@ export default class Cpu {
     }
 
     public start() {
-        if (!this.timeoutLoop) {
+        if (!this.running) {
             const loop = () => {
-                this.step();
-                this.timeoutLoop = setTimeout(() => loop(), 1000 / Cpu.cpuHz);
+                for (let i = 0; i < 8; i++) {
+                    this.step();
+                }
+                if (this.running) {
+                    requestAnimationFrame(() => loop());
+                }
             };
+            this.running = true;
             loop();
         }
     }
 
     public stop() {
-        if (this.timeoutLoop) {
-            clearTimeout(this.timeoutLoop);
-            this.timeoutLoop = undefined;
-        }
+        this.running = false;
     }
 
     public reset() {
@@ -84,19 +84,16 @@ export default class Cpu {
     }
 
     public step() {
-        if (this.r.v[0xF] && this.r.v[0xF] !== 0 && this.r.v[0xF] !== 1) {
-            // tslint:disable-next-line:no-console
-            console.log("error");
-        }
-        this.stepCount++;
-        if (this.stepCount === this.delayInterval) {
+        const now = Date.now();
+        const timeSinceLastDelay = now - this.lastDelayTime;
+        if (timeSinceLastDelay > Cpu.fpsInterval) {
+            this.lastDelayTime = now - (timeSinceLastDelay % Cpu.fpsInterval);
             if (this.r.delay > 0) {
                 --this.r.delay;
             }
             if (this.r.sound > 0) {
                 --this.r.sound;
             }
-            this.stepCount = 0;
         }
 
         const word = this.getInstruction();
@@ -287,8 +284,6 @@ export default class Cpu {
                 const numberOfBytes: number = this.getN(word);
                 const startingX = this.r.v[this.getX(word)];
                 const startingY = this.r.v[this.getY(word)];
-                // tslint:disable-next-line:no-console
-                console.log(startingX.toString(16), startingY.toString(16));
                 const startingMemoryLocation = this.r.i;
 
                 for (let y = 0; y < numberOfBytes; y++) {
@@ -303,7 +298,6 @@ export default class Cpu {
                         if (((byte & (0x80 >> x)) !== 0)) {
                             const collision = (this.setPixel(startingX + x, startingY + y));
                             // tslint:disable-next-line:no-console
-                            console.log(`Collision: ${collision}`);
                             if (collision) {
                                 this.r.v[0xF] = 1;
                             }
@@ -412,6 +406,7 @@ export default class Cpu {
     }
 
     private resetStates() {
+        this.lastDelayTime = Date.now();
         this.graphicMemory = new Array<boolean>(64 * 32);
 
         this.r.pc = 0x200;
@@ -458,8 +453,6 @@ export default class Cpu {
         const location = x + (width * y);
         const old = this.graphicMemory[location];
         this.graphicMemory[location] = this.graphicMemory[location] ? !true : true;
-        // tslint:disable-next-line:no-console
-        console.log(`at (${x},${y}) is ${old} needs to be ${true} now is ${this.graphicMemory[location]}`);
         return !this.graphicMemory[location];
     }
 }
